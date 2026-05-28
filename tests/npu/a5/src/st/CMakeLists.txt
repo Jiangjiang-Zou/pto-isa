@@ -42,7 +42,7 @@ if (PTO_GLIBCXX_USE_CXX11_ABI STREQUAL "auto")
         endif()
         if (_pto_gtest_loc AND EXISTS "${_pto_gtest_loc}")
             execute_process(
-                COMMAND bash -lc "nm -C \"${_pto_gtest_loc}\" 2>/dev/null | grep -q 'GetBoolAssertionFailureMessage\\[abi:cxx11\\]'"
+                COMMAND bash -lc "nm -D -C \"${_pto_gtest_loc}\" 2>/dev/null | grep -q 'GetBoolAssertionFailureMessage\\[abi:cxx11\\]'"
                 RESULT_VARIABLE _pto_gtest_is_abi1
             )
             if (NOT _pto_gtest_is_abi1 EQUAL 0)
@@ -97,7 +97,7 @@ set(CMAKE_CPP_COMPILE_OPTIONS
 )
 
 include_directories(
-    ${PROJECT_SOURCE_DIR}/../../../../../include 
+    ${PROJECT_SOURCE_DIR}/../../../../../include
     ${ASCEND_HOME_PATH}/include
     ${ASCEND_DRIVER_PATH}/kernel/inc
 )

@@ -3,12 +3,40 @@
 set -euo pipefail
 
 repo_root=$(
-  cd "$(dirname "${BASH_SOURCE[0]}")/../.."
+  cd "$(dirname "${BASH_SOURCE[0]}")/../../.."
   pwd
 )
 
+source_if_exists() {
+  local script_path="$1"
+  shift || true
+  if [[ -f "${script_path}" ]]; then
+    set +u
+    # shellcheck disable=SC1090
+    source "${script_path}" "$@"
+    set -u
+    return 0
+  fi
+
+  return 1
+}
+
+source_runner_env() {
+  local conda_activate="${A5_CONDA_ACTIVATE_PATH:-}"
+  local cann_setenv="${A5_CANN_SETENV_PATH:-}"
+
+  if [[ -n "${conda_activate}" ]]; then
+    source_if_exists "${conda_activate}" || true
+  fi
+
+  if [[ -n "${cann_setenv}" ]]; then
+    source_if_exists "${cann_setenv}" || true
+  fi
+}
+
 resolve_ascend_home() {
   local candidates=()
+  local glob_candidate=""
 
   if [[ -n "${ASCEND_HOME_PATH:-}" ]]; then
     candidates+=("${ASCEND_HOME_PATH}")
@@ -19,6 +47,11 @@ resolve_ascend_home() {
     "/usr/local/Ascend/ascend-toolkit"
     "${HOME}/Ascend/cann"
   )
+  shopt -s nullglob
+  for glob_candidate in /usr/local/Ascend/cann-*; do
+    candidates+=("${glob_candidate}")
+  done
+  shopt -u nullglob
 
   local candidate=""
   for candidate in "${candidates[@]}"; do
@@ -41,9 +74,7 @@ source_ascend_env() {
 
   local env_script=""
   for env_script in "${env_scripts[@]}"; do
-    if [[ -f "${env_script}" ]]; then
-      # shellcheck disable=SC1090
-      source "${env_script}"
+    if source_if_exists "${env_script}"; then
       return 0
     fi
   done
@@ -60,6 +91,12 @@ require_command() {
 }
 
 main() {
+  source_runner_env
+  # Keep the runner self-healing so a fresh machine can satisfy the smoke prerequisites.
+  # shellcheck disable=SC1091
+  source "${repo_root}/.github/scripts/a5/setup_runner_env.sh"
+  a5_bootstrap_runner_env
+
   local ascend_home=""
   if ! ascend_home="$(resolve_ascend_home)"; then
     echo "ERROR: ASCEND_HOME_PATH is not set and no default Ascend installation was found." >&2
